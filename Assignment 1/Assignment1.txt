@@ -1,0 +1,194 @@
+/*
+CS561 Assignment 1
+CWID: 10473438
+NAME: Cheng Chen
+*/
+/*
+Question 1:
+*/
+with T1 as (
+	select cust, min(quant)min_q, max(quant)max_q, avg(quant)avg_q
+	from sales
+	group by cust
+), T2 as(
+	select T1.cust, T1.min_q, S.prod min_p, S.date min_date, S.state min_st, T1.max_q,T1.avg_q
+	from T1, sales S
+	where T1.cust = S.cust and T1.min_q = S.quant
+)
+	select T2.cust as CUSTOMER, T2.min_q as MIN_Q,
+		   T2.min_p as MIN_PROD, T2.min_date MIN_DATE, 
+		   T2.min_st as ST, T2.max_q as MAX_Q, 
+		   sales.prod as MAX_PROD, sales.date as MAX_DATE, 
+		   sales.state as ST, T2.avg_q as AVG_Q
+	from T2, sales
+	where T2.cust = sales.cust and T2.max_q = sales.quant
+	order by T2.cust
+
+/*
+Question 2:
+*/
+with 
+T1 as (
+	select year, month, day, sum(quant) as day_quant
+	from sales
+	group by day, month, year
+),
+T2 as (
+	select year, month, min(day_quant) as min_day_quant, max(day_quant) as max_day_quant
+	from T1
+	group by month, year
+),
+T3 as (
+	select T1.year, T1.month, T1.day as min_day, T2.min_day_quant
+	from T1, T2
+	where T1.day_quant = T2.min_day_quant and T1.month = T2.month and T1.year = T2.year
+),
+T4 as (
+	select T1.year, T1.month, T1.day as max_day, T2.max_day_quant
+	from T1, T2
+	where T1.day_quant = T2.max_day_quant and T1.month = T2.month and T1.year = T2.year
+)
+select T3.year, T3.month, T3.min_day as SLOWEST_DAY, 
+	   T3.min_day_quant as SLOWEST_TOTAL_Q, T4.max_day as BUSIEST_DAY, 
+	   T4.max_day_quant as BUSIEST_TOTAL_Q
+from T3, T4
+where T3.year = T4.year and T3.month = T4.month
+order by T3.year desc, T3.month desc
+
+/*
+Question 3:
+*/
+with
+T1 as (
+	select cust, month, prod, sum(quant) as prod_month_quant
+	from sales
+	group by cust, month, prod
+),
+T2 as (
+	select T1.cust, T1.month, min(T1.prod_month_quant) as least_prod_quant
+	from T1
+	group by T1.cust,T1.month
+),
+T3 as (
+	select T1.cust, T1.month, max(T1.prod_month_quant) as most_prod_quant
+	from T1
+	group by T1.cust,T1.month
+),
+T4 as(
+	select T1.cust, T1.month,T1.prod as least_prod
+	from T1,T2
+	where T1.prod_month_quant = T2.least_prod_quant and T1.cust = T2.cust and T1.month = T2.month
+),
+T5 as (
+	select T1.cust, T1.month,T1.prod as most_prod
+	from T1,T3
+	where T1.prod_month_quant = T3.most_prod_quant and T1.cust = T3.cust  and T1.month = T3.month
+)
+select T4.cust as CUSTOMER, T4.month, T5.most_prod as MOST_FAV_PROD, T4.least_prod as LEAST_FAV_PROD
+from T4,T5
+where T4.cust = T5.cust and T4.month = T5.month
+order by T4.cust, month asc
+
+/*
+Question 4:
+*/
+with
+Q1 as (
+	select cust, prod, avg(quant) as q1_avg
+	from sales
+	where month in (1,2,3)
+	group by cust, prod
+),
+Q2 as (
+	select cust, prod, avg(quant) as q2_avg
+	from sales
+	where month in (4,5,6)
+	group by cust, prod
+),
+Q3 as (
+	select cust, prod, avg(quant)as q3_avg
+	from sales
+	where month in (7,8,9)
+	group by cust, prod
+),
+Q4 as (
+	select cust, prod, avg(quant)as q4_avg
+	from sales
+	where month in (10,11,12)
+	group by cust, prod
+),
+whole as(
+	select cust, prod, avg(quant) as total_avg, sum(quant) as sum_quant, count(quant) as count_quant
+	from sales
+	group by cust, prod
+)
+	select Q1.cust as CUSTOMER, Q1.prod as PRODUCT, Q1.q1_avg, 
+		   Q2.q2_avg, Q3.q3_avg, Q4.q4_avg, 
+	       whole.total_avg as AVERAGE,whole.sum_quant as TOTAL, whole.count_quant as COUNT
+	from Q1, Q2, Q3, Q4, whole
+	where Q1.cust = Q2.cust and Q1.prod = Q2.prod
+	  and Q1.cust = Q3.cust and Q1.prod = Q3.prod
+	  and Q1.cust = Q4.cust and Q1.prod = Q4.prod
+	  and Q1.cust = Q4.cust and Q1.prod = Q4.prod
+	  and Q1.cust = whole.cust and Q1.prod = whole.prod
+	order by Q1.cust, Q1.prod
+
+/*
+Question 5:
+*/
+with
+T1 as(
+	select prod, max(quant) as max_quant
+	from sales
+	where month in (1,2,3)
+	group by prod
+),
+Q1 as(
+	select T1.prod, T1.max_quant, sales.date
+	from T1, sales
+	where T1.prod = sales.prod and T1.max_quant = sales.quant and sales.month in (1,2,3)
+),
+T2 as(
+	select prod, max(quant) as max_quant
+	from sales
+	where month in (4,5,6)
+	group by prod
+),
+Q2 as(
+	select T2.prod, T2.max_quant, sales.date
+	from T2, sales
+	where T2.prod = sales.prod and T2.max_quant = sales.quant and sales.month in (4,5,6)
+),
+T3 as(
+	select prod, max(quant) as max_quant
+	from sales
+	where month in (7,8,9)
+	group by prod
+),
+Q3 as(
+	select T3.prod, T3.max_quant, sales.date
+	from T3, sales
+	where T3.prod = sales.prod and T3.max_quant = sales.quant and sales.month in (7,8,9)
+),
+T4 as(
+	select prod, max(quant) as max_quant
+	from sales
+	where month in (10,11,12)
+	group by prod
+),
+Q4 as(
+	select T4.prod, T4.max_quant, sales.date
+	from T4, sales
+	where T4.prod = sales.prod and T4.max_quant = sales.quant and sales.month in (10,11,12)
+)
+	select Q1.prod as PRODUCT, 
+		   Q1.max_quant as Q1_MAX, Q1.date as DATE,
+		   Q2.max_quant as Q2_MAX, Q2.date as DATE,
+		   Q3.max_quant as Q3_MAX, Q3.date as DATE,
+		   Q4.max_quant as Q4_MAX, Q4.date as DATE
+	from Q1, Q2, Q3, Q4
+	where Q1.prod = Q2.prod
+	  and Q1.prod = Q3.prod
+	  and Q1.prod = Q4.prod
+	order by Q1.prod
+
